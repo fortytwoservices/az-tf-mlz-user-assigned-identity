@@ -8,6 +8,11 @@ output "federated_identity_credential_resource_ids" {
   value       = { for name, credential in module.federated_identity_credential : name => credential.resource_id }
 }
 
+output "lock_resource_id" {
+  description = "Resource ID of the identity's lock; null without one."
+  value       = module.interfaces.lock_resource_id
+}
+
 output "name" {
   description = "Name of the user-assigned identity."
   value       = azapi_resource.this.name
@@ -21,6 +26,11 @@ output "principal_id" {
 output "resource_id" {
   description = "Resource ID of the user-assigned identity."
   value       = azapi_resource.this.id
+}
+
+output "role_assignment_resource_ids" {
+  description = "Resource IDs of the role assignments on the identity, by key."
+  value       = module.interfaces.role_assignment_resource_ids
 }
 
 output "tenant_id" {

@@ -35,17 +35,22 @@ variable "federated_identity_credentials" {
   default     = {}
   description = <<DESCRIPTION
 Federated identity credentials on the user-assigned identity, keyed by credential name (3 to 120 characters:
-letters, digits, hyphens and underscores, starting with a letter or digit). Azure allows 20 per identity.
+letters, digits, hyphens and underscores, starting with a letter or digit; renaming one replaces it). Azure
+allows 20 per identity, each with its own pair of `issuer` and `subject`. No property takes wildcards.
 
-- `issuer` - URL of the external identity provider, for example `https://token.actions.githubusercontent.com`.
-- `subject` - Identifier of the external workload, for example `repo:<owner>/<repo>:environment:<name>`.
-- `audiences` - (Optional) Audiences accepted in the external token. Defaults to `["api://AzureADTokenExchange"]`.
+- `issuer` - URL of the external identity provider, for example `https://token.actions.githubusercontent.com` (up to 600 characters).
+- `subject` - Identifier of the external workload, for example `repo:<owner>/<repo>:environment:<name>`; it must match the token's `sub` claim exactly (up to 600 characters).
+- `audiences` - (Optional) The audience accepted in the external token; Azure takes exactly one (up to 600 characters). Defaults to `["api://AzureADTokenExchange"]`.
 DESCRIPTION
   nullable    = false
 
   validation {
     condition     = length(var.federated_identity_credentials) <= 20
     error_message = "A user-assigned identity holds at most 20 federated identity credentials."
+  }
+  validation {
+    condition     = length(distinct([for credential in values(var.federated_identity_credentials) : jsonencode([credential.issuer, credential.subject])])) == length(var.federated_identity_credentials)
+    error_message = "Each federated identity credential needs its own pair of `issuer` and `subject`: Azure refuses a pair the identity already has."
   }
 }
 

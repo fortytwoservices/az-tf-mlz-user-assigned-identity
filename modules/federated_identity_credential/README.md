@@ -4,10 +4,19 @@
 
 One federated identity credential on a user-assigned identity
 (`Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials`). The root module
-calls it once per credential; it can also be called alone with the identity's resource ID.
+calls it once per credential; it can also be called alone with the identity's resource ID:
+
+```hcl
+source = "git::https://github.com/fortytwoservices/az-tf-mlz-user-assigned-identity.git//modules/federated_identity_credential?ref=vX.Y.Z"
+```
 
 Azure rejects parallel writes of credentials under one identity (409 Conflict), so every write locks
-the parent identity's ID and credentials are written one at a time.
+the parent identity's ID and credentials are written one at a time. Credentials written from two
+Terraform states at once are not serialised against each other. Issuer, subject and audience are
+updated in place; a new name replaces the credential.
+
+A caller that locks the identity passes `lock_dependency` in its lock's dependencies: Azure applies the
+identity's lock to the credential too, and a `ReadOnly` lock also blocks updating it in place.
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -31,13 +40,13 @@ The following input variables are required:
 
 ### <a name="input_issuer"></a> [issuer](#input\_issuer)
 
-Description: URL of the external identity provider, for example `https://token.actions.githubusercontent.com`.
+Description: URL of the external identity provider, for example `https://token.actions.githubusercontent.com`. Up to 600 characters.
 
 Type: `string`
 
 ### <a name="input_name"></a> [name](#input\_name)
 
-Description: Name of the federated identity credential. Cannot be changed after creation.
+Description: Name of the federated identity credential. Changing it replaces the credential.
 
 Type: `string`
 
@@ -49,7 +58,7 @@ Type: `string`
 
 ### <a name="input_subject"></a> [subject](#input\_subject)
 
-Description: Identifier of the external workload, for example `repo:<owner>/<repo>:environment:<name>`.
+Description: Identifier of the external workload, for example `repo:<owner>/<repo>:environment:<name>`. It must match the token's `sub` claim exactly (no wildcards). Up to 600 characters.
 
 Type: `string`
 
@@ -59,7 +68,7 @@ The following input variables are optional (have default values):
 
 ### <a name="input_audiences"></a> [audiences](#input\_audiences)
 
-Description: Audiences accepted in the external token. Azure accepts exactly one.
+Description: The audience accepted in the external token. Azure takes exactly one, up to 600 characters.
 
 Type: `list(string)`
 

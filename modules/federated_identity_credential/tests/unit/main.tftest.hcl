@@ -101,6 +101,59 @@ run "invalid_parent_id" {
   expect_failures = [var.parent_id]
 }
 
+run "empty_subject" {
+  command = plan
+
+  variables {
+    subject = ""
+  }
+
+  expect_failures = [var.subject]
+}
+
+run "subject_too_long" {
+  command = plan
+
+  variables {
+    subject = join("", [for i in range(601) : "a"])
+  }
+
+  expect_failures = [var.subject]
+}
+
+run "subject_of_600_characters" {
+  command = plan
+
+  variables {
+    subject = join("", [for i in range(600) : "a"])
+  }
+
+  assert {
+    condition     = length(azapi_resource.this.body.properties.subject) == 600
+    error_message = "A subject of 600 characters should be accepted."
+  }
+}
+
+run "issuer_too_long" {
+  command = plan
+
+  variables {
+    issuer = "https://${join("", [for i in range(593) : "a"])}"
+  }
+
+  expect_failures = [var.issuer]
+}
+
+run "audience_too_long" {
+  command = plan
+
+  variables {
+    audiences = [join("", [for i in range(601) : "a"])]
+  }
+
+  expect_failures = [var.audiences]
+}
+
 run "two_audiences" {
   command = plan
 

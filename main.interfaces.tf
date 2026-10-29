@@ -1,7 +1,8 @@
-# A user-assigned identity has no diagnostic settings; a module whose resource has them also passes
-# `diagnostic_settings`.
+# A user-assigned identity has no diagnostic settings. The addresses `azapi_resource.this` and
+# `module.interfaces` are those of az-tf-mlz-management's former `modules/user_assigned_identity`, so its
+# deployed identities move to this module without `moved` blocks.
 module "interfaces" {
-  source = "git::https://github.com/fortytwoservices/az-tf-mlz-interfaces.git?ref=v0.1.0"
+  source = "git::https://github.com/fortytwoservices/az-tf-mlz-interfaces.git?ref=v0.1.1"
 
   resource_id = azapi_resource.this.id
   location    = var.location

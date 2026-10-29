@@ -2,7 +2,7 @@
 provider "azapi" {}
 
 locals {
-  location = "norwayeast"
+  location = "swedencentral"
   tags     = { example = "default" }
 }
 
@@ -16,7 +16,7 @@ resource "random_string" "suffix" {
 
 resource "azapi_resource" "resource_group" {
   type      = "Microsoft.Resources/resourceGroups@2024-11-01"
-  name      = "rg-mlz-template-${random_string.suffix.result}"
+  name      = "rg-mlz-uai-default-${random_string.suffix.result}"
   parent_id = "/subscriptions/${data.azapi_client_config.current.subscription_id}"
   location  = local.location
 
@@ -27,17 +27,14 @@ resource "azapi_resource" "resource_group" {
 module "user_assigned_identity" {
   source = "../../"
 
-  name      = "id-mlz-template-${random_string.suffix.result}"
+  name      = "id-mlz-uai-default-${random_string.suffix.result}"
   parent_id = azapi_resource.resource_group.id
   location  = local.location
-  federated_identity_credentials = {
-    github-main = {
-      issuer  = "https://token.actions.githubusercontent.com"
-      subject = "repo:example-org/example-repo:ref:refs/heads/main"
-    }
-    github-pull-request = {
-      issuer  = "https://token.actions.githubusercontent.com"
-      subject = "repo:example-org/example-repo:pull_request"
+  # A role on the identity: whoever runs this example may assign the identity to resources.
+  role_assignments = {
+    operator = {
+      role_definition_id_or_name = "Managed Identity Operator"
+      principal_id               = data.azapi_client_config.current.object_id
     }
   }
   tags = local.tags

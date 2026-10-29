@@ -76,6 +76,10 @@ run "defaults" {
     condition     = length(output.federated_identity_credential_resource_ids) == 0
     error_message = "No credential IDs should be output by default."
   }
+  assert {
+    condition     = output.lock_resource_id == null && length(output.role_assignment_resource_ids) == 0
+    error_message = "lock_resource_id should be null and role_assignment_resource_ids empty by default."
+  }
 }
 
 run "identity_options" {
@@ -155,6 +159,34 @@ run "interfaces" {
   assert {
     condition     = module.interfaces.lock_resource_id != null && keys(module.interfaces.role_assignment_resource_ids) == ["by_name", "tenant_level_id"]
     error_message = "The lock and role assignments should be created through az-tf-mlz-interfaces."
+  }
+  assert {
+    condition     = output.lock_resource_id == module.interfaces.lock_resource_id && jsonencode(output.role_assignment_resource_ids) == jsonencode(module.interfaces.role_assignment_resource_ids)
+    error_message = "lock_resource_id and role_assignment_resource_ids should come from az-tf-mlz-interfaces."
+  }
+}
+
+run "slots_with_null_keys" {
+  command = plan
+
+  # az-tf-mlz-management passes its slot objects whole: three keys, each null unless set, and no slot for
+  # the credentials. Null keys take this module's defaults.
+  variables {
+    resource_types = {
+      managedidentity_user_assigned_identities = null
+      authorization_locks                      = null
+      authorization_role_assignments           = null
+    }
+    ignore_body_changes = {
+      managedidentity_user_assigned_identities = []
+      authorization_locks                      = []
+      authorization_role_assignments           = []
+    }
+  }
+
+  assert {
+    condition     = azapi_resource.this.type == "Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30"
+    error_message = "A null resource type should fall back to the default."
   }
 }
 
@@ -277,6 +309,35 @@ run "too_many_credentials" {
   }
 
   expect_failures = [var.federated_identity_credentials]
+}
+
+run "duplicate_issuer_and_subject" {
+  command = plan
+
+  variables {
+    federated_identity_credentials = {
+      first  = { issuer = "https://token.actions.githubusercontent.com", subject = "repo:example/example:pull_request" }
+      second = { issuer = "https://token.actions.githubusercontent.com", subject = "repo:example/example:pull_request" }
+    }
+  }
+
+  expect_failures = [var.federated_identity_credentials]
+}
+
+run "same_subject_other_issuer" {
+  command = plan
+
+  variables {
+    federated_identity_credentials = {
+      github = { issuer = "https://token.actions.githubusercontent.com", subject = "deploy" }
+      gitlab = { issuer = "https://gitlab.com", subject = "deploy" }
+    }
+  }
+
+  assert {
+    condition     = length(module.federated_identity_credential) == 2
+    error_message = "One subject under two issuers should be accepted."
+  }
 }
 
 run "invalid_delegated_identity" {
